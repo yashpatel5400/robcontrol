@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -15,10 +16,14 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from robbuffet import OfflineDataset, OperatorNormScore, SplitConformalCalibrator
 from robbuffet import vis
 from robcontrol.controllers import CPCController
-from examples.data import TASKS, load_dataset
+from examples.data import load_dataset
 from robcontrol.utils import rollout_cost, solve_discrete_lqr
 
 
@@ -35,7 +40,7 @@ def build_loaders(thetas: np.ndarray, Cs: np.ndarray, batch_size: int, seed: int
 
 
 def load_model(model_path: Path, meta_path: Path) -> torch.nn.Module:
-    from robcontrol.model import DynamicsMLP
+    from examples.model import DynamicsMLP
 
     with open(meta_path, "r") as f:
         meta = json.load(f)
@@ -200,9 +205,7 @@ def evaluate(
 
 def main():
     parser = argparse.ArgumentParser(description="Assess nominal vs CPC controllers using predicted dynamics.")
-    parser.add_argument("--dataset", required=True)
-    parser.add_argument("--model", required=True)
-    parser.add_argument("--meta", required=True)
+    parser.add_argument("--task", required=True, help="Dataset name (base under artifacts/, no extension).")
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--horizon", type=int, default=200)
     parser.add_argument("--seed", type=int, default=0)
@@ -214,7 +217,8 @@ def main():
     parser.add_argument("--metrics-out", default=None, help="Path to save metrics JSON.")
     args = parser.parse_args()
 
-    data = load_dataset(args.dataset)
+    base = Path("artifacts") / args.task
+    data = load_dataset(str(base.with_suffix(".npz")))
     thetas = data["thetas"]
     A_true = data["A_true"]
     B_true = data["B_true"]
@@ -223,7 +227,9 @@ def main():
     m = B_true.shape[2]
 
     train_loader, cal_loader, test_loader = build_loaders(thetas, Cs, args.batch_size, args.seed)
-    model, meta = load_model(Path(args.model), Path(args.meta))
+    model_path = base.with_suffix("").with_name(base.name + "_model.pt")
+    meta_path = base.with_suffix("").with_name(base.name + "_meta.json")
+    model, meta = load_model(model_path, meta_path)
     meta["q"] = data["q"]
     meta["r"] = data["r"]
     meta["seed"] = args.seed
@@ -234,7 +240,7 @@ def main():
 
     fig, ax = plt.subplots()
     vis.plot_calibration_curve(alphas, coverages, ax=ax, label=data.get("task", "task"), title="Calibration")
-    calib_out = Path(args.calib_out or Path(args.dataset).with_suffix("").as_posix() + "_calibration.png")
+    calib_out = Path(args.calib_out or base.with_suffix("").with_name(base.name + "_calibration.png"))
     calib_out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(calib_out, bbox_inches="tight", dpi=150)
     print(f"Saved calibration plot to {calib_out}")
@@ -249,7 +255,7 @@ def main():
         process_noise_std=args.process_noise_std,
         control_noise_std=args.control_noise_std,
     )
-    metrics_out = Path(args.metrics_out or Path(args.dataset).with_suffix("").as_posix() + "_metrics.json")
+    metrics_out = Path(args.metrics_out or base.with_suffix("").with_name(base.name + "_metrics.json"))
     metrics_out.parent.mkdir(parents=True, exist_ok=True)
     with open(metrics_out, "w") as f:
         json.dump(metrics, f, indent=2)

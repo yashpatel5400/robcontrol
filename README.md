@@ -32,9 +32,9 @@ K_cpc = cpc.synthesize(A, B)
 
 ### Run the full pipeline (examples)
 ```bash
-python -m examples.data --task cartpole --num-samples 500 --horizon 200 --seed 0 --out artifacts/cartpole_dataset.npz
-python -m examples.model --dataset artifacts/cartpole_dataset.npz --out-model artifacts/cartpole_model.pt --out-meta artifacts/cartpole_meta.json --epochs 400 --lr 1e-3 --batch-size 128
-python -m examples.assess --dataset artifacts/cartpole_dataset.npz --model artifacts/cartpole_model.pt --meta artifacts/cartpole_meta.json --horizon 200 --rollouts 5 --trials 5 --seed 0
+python -m examples.data --task cartpole --num-samples 500 --horizon 200 --seed 0
+python -m examples.model --task cartpole --epochs 400 --lr 1e-3 --batch-size 128
+python -m examples.assess --task cartpole --horizon 200 --rollouts 5 --trials 5 --seed 0
 ```
 Outputs: calibration plot and metrics JSON (means/stds; paired t-test robust < nominal when trials > 1).
 

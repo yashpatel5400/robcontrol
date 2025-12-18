@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Tuple
 
@@ -13,6 +14,10 @@ import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from robbuffet import OfflineDataset
 from examples.data import load_dataset
@@ -64,9 +69,7 @@ def train(model: nn.Module, loader: DataLoader, epochs: int, lr: float, device: 
 
 def main():
     parser = argparse.ArgumentParser(description="Train dynamics predictor on saved dataset.")
-    parser.add_argument("--dataset", required=True, help="Path to NPZ dataset.")
-    parser.add_argument("--out-model", default=None, help="Path to save model .pt file.")
-    parser.add_argument("--out-meta", default=None, help="Path to save metadata .json file.")
+    parser.add_argument("--task", required=True, help="Dataset name (base under artifacts/, no extension).")
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -74,7 +77,8 @@ def main():
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
 
-    data = load_dataset(args.dataset)
+    base = Path("artifacts") / args.task
+    data = load_dataset(str(base.with_suffix(".npz")))
     thetas = data["thetas"]
     A_true = data["A_true"]
     B_true = data["B_true"]
@@ -88,8 +92,8 @@ def main():
     model = DynamicsMLP(theta_dim=thetas.shape[1], out_dim=C_flat.shape[1])
     train(model, train_loader, epochs=args.epochs, lr=args.lr, device=args.device)
 
-    out_model = Path(args.out_model or (Path(args.dataset).with_suffix("") .as_posix() + "_model.pt"))
-    out_meta = Path(args.out_meta or (Path(args.dataset).with_suffix("") .as_posix() + "_meta.json"))
+    out_model = base.with_suffix("").with_name(base.name + "_model.pt")
+    out_meta = base.with_suffix("").with_name(base.name + "_meta.json")
     torch.save(model.state_dict(), out_model)
     meta = {
         "theta_dim": int(thetas.shape[1]),

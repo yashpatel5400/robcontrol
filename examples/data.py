@@ -8,11 +8,16 @@ compressed NPZ artifacts keyed by task name.
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
 import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from robcontrol.utils import solve_discrete_lqr
 
@@ -235,7 +240,7 @@ def main():
     parser.add_argument("--process-noise-std", type=float, default=0.01)
     parser.add_argument("--control-noise-std", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--out", default="robcontrol/artifacts/cartpole_dataset.npz")
+    parser.add_argument("--out", default=None)
     args = parser.parse_args()
 
     data = generate_dataset(
@@ -246,9 +251,8 @@ def main():
         control_noise_std=args.control_noise_std,
         seed=args.seed,
     )
-    out_path = Path(args.out)
-    if out_path.suffix == "":
-        out_path = out_path.with_suffix(".npz")
+    out_path = Path(args.out) if args.out else Path("artifacts") / f"{args.task}.npz"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     save_dataset(data, out_path)
     print(f"Saved dataset to {out_path}")
 
