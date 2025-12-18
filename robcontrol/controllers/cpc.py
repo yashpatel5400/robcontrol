@@ -58,6 +58,23 @@ def gradients(
     return grad_K, grad_C, X, P, W
 
 
+def project_to_spectral_ball(C: np.ndarray, center: np.ndarray, radius: float) -> np.ndarray:
+    """
+    Project matrix C onto the spectral-norm ball of radius around center.
+    Done via SVD and clipping singular values to radius.
+    """
+    if radius <= 0:
+        return center
+    diff = C - center
+    # If already inside the ball, return as-is
+    if np.linalg.norm(diff, 2) <= radius:
+        return C
+    U, s, Vt = np.linalg.svd(diff, full_matrices=False)
+    s_clipped = np.minimum(s, radius)
+    diff_proj = (U * s_clipped) @ Vt
+    return center + diff_proj
+
+
 @dataclass
 class CPCConfig:
     step_k: float = 1e-3
@@ -109,13 +126,13 @@ class CPCController(RobustController):
         costs: List[float] = []
 
         for _ in range(self.config.outer_iters):
-            # Inner loop: ascend over dynamics (unconstrained)
+            # Inner loop: ascend over dynamics projected into spectral-norm ball
             for _ in range(self.config.inner_iters):
                 A = C_cur[:, :n]
                 B = C_cur[:, n:]
                 _, grad_C, _, _, _ = gradients(K, A, B, self.Q, self.R, X0)
                 C_next = C_cur + self.config.step_c * grad_C
-                C_cur = C_next
+                C_cur = project_to_spectral_ball(C_next, C_center, self.config.radius)
             # Outer update on K using worst-case C_cur
             A_wc = C_cur[:, :n]
             B_wc = C_cur[:, n:]

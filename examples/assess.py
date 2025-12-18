@@ -22,7 +22,7 @@ if str(ROOT) not in sys.path:
 
 from robbuffet import OfflineDataset, OperatorNormScore, SplitConformalCalibrator
 from robbuffet import vis
-from robcontrol.controllers import CPCController
+from robcontrol.controllers import CPCController, CPCConfig
 from examples.data import load_dataset
 from robcontrol.utils import rollout_cost, solve_discrete_lqr
 
@@ -78,6 +78,7 @@ def evaluate_once(
     process_noise_std: float = 0.0,
     control_noise_std: float = 0.0,
     seed: int = 0,
+    conformal_radius: float | None = None,
 ) -> Dict[str, float]:
     state_dim = task_meta["state_dim"]
     control_dim = task_meta["control_dim"]
@@ -85,7 +86,8 @@ def evaluate_once(
     costs_true = []
     costs_hat_on_true = []
     costs_cpc_on_true = []
-    cpc_ctrl = CPCController(np.array(task_meta["q"]), np.array(task_meta["r"]), config=None)
+    cpc_config = CPCConfig(radius=float(conformal_radius)) if conformal_radius is not None else CPCConfig()
+    cpc_ctrl = CPCController(np.array(task_meta["q"]), np.array(task_meta["r"]), config=cpc_config)
     rng = np.random.default_rng(seed)
 
     with torch.no_grad():
@@ -168,6 +170,7 @@ def evaluate(
     trials: int = 1,
     process_noise_std: float = 0.0,
     control_noise_std: float = 0.0,
+    conformal_radius: float | None = None,
 ) -> Dict[str, float]:
     robust_vals: List[float] = []
     nominal_vals: List[float] = []
@@ -182,6 +185,7 @@ def evaluate(
             process_noise_std=process_noise_std,
             control_noise_std=control_noise_std,
             seed=task_meta.get("seed", 0) + t,
+            conformal_radius=conformal_radius,
         )
         true_vals.append(stats["mean_cost_true_opt_on_true"])
         nominal_vals.append(stats["mean_cost_hat_on_true"])
@@ -211,6 +215,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--rollouts", type=int, default=5)
     parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument("--alpha", type=float, default=0.1)
     parser.add_argument("--process-noise-std", type=float, default=0.0)
     parser.add_argument("--control-noise-std", type=float, default=0.0)
     parser.add_argument("--calib-out", default=None, help="Path to save calibration plot.")
@@ -237,6 +242,9 @@ def main():
     score_fn = OperatorNormScore(state_dim=n, control_dim=m)
     alphas = np.linspace(0.01, 0.4, 8)
     alphas, coverages = compute_calibration_curve(model, score_fn, cal_loader, test_loader, mat_shape, alphas)
+    # Calibrate at target alpha to get conformal radius
+    cal_for_radius = SplitConformalCalibrator(model, score_fn, cal_loader)
+    conformal_radius = cal_for_radius.calibrate(alpha=float(args.alpha))
 
     fig, ax = plt.subplots()
     vis.plot_calibration_curve(alphas, coverages, ax=ax, label=data.get("task", "task"), title="Calibration")
@@ -254,6 +262,7 @@ def main():
         trials=args.trials,
         process_noise_std=args.process_noise_std,
         control_noise_std=args.control_noise_std,
+        conformal_radius=conformal_radius,
     )
     metrics_out = Path(args.metrics_out or base.with_suffix("").with_name(base.name + "_metrics.json"))
     metrics_out.parent.mkdir(parents=True, exist_ok=True)
