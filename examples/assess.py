@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -16,14 +15,10 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
 from robbuffet import OfflineDataset, OperatorNormScore, SplitConformalCalibrator
 from robbuffet import vis
 from robcontrol.controllers import CPCController
-from robcontrol.data import TASKS, load_dataset
+from examples.data import TASKS, load_dataset
 from robcontrol.utils import rollout_cost, solve_discrete_lqr
 
 

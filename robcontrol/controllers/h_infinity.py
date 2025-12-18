@@ -11,8 +11,8 @@ import numpy as np
 
 import cvxpy as cp
 
-from robcontrol.controllers.base import RobustController
-from robcontrol.utils import solve_discrete_lqr
+from .base import RobustController
+from ..utils import solve_discrete_lqr
 
 
 def _sqrt_psd(M: np.ndarray) -> np.ndarray:

@@ -13,8 +13,8 @@ from typing import List, Tuple
 
 import numpy as np
 
-from robcontrol.controllers.base import RobustController
-from robcontrol.utils import solve_discrete_lqr
+from .base import RobustController
+from ..utils import solve_discrete_lqr
 
 
 def solve_discrete_lyapunov(A: np.ndarray, Q: np.ndarray) -> np.ndarray:

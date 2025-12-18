@@ -19,10 +19,5 @@ dependencies = [
     "robbuffet>=0.0.1",
 ]
 
-[project.scripts]
-robcontrol-data = "robcontrol.data:main"
-robcontrol-model = "robcontrol.model:main"
-robcontrol-assess = "robcontrol.assess:main"
-
 [tool.setuptools]
 packages = ["robcontrol", "robcontrol.controllers"]
