@@ -2,6 +2,13 @@
 
 This submodule provides a small end-to-end pipeline for conformalized robust LQR experiments.
 
+## Install
+From the repo root:
+```bash
+pip install -e .
+```
+This installs CLI entry points `robcontrol-data`, `robcontrol-model`, and `robcontrol-assess`.
+
 ## 1) Generate a dataset
 Synthetic tasks: `mass_spring_damper`, `cartpole`, `dc_motor`.
 ```bash

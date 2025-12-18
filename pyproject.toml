@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robcontrol"
+version = "0.0.1"
+description = "Conformal robust LQR experiments and CPC baseline"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Yash Patel" }]
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.1.0",
+    "cvxpy>=1.4.0",
+    "matplotlib>=3.7.0",
+    "scipy>=1.10.0",
+    "robbuffet>=0.0.1",
+]
+
+[project.scripts]
+robcontrol-data = "robcontrol.data:main"
+robcontrol-model = "robcontrol.model:main"
+robcontrol-assess = "robcontrol.assess:main"
+
+[tool.setuptools]
+packages = ["robcontrol", "robcontrol.controllers"]
